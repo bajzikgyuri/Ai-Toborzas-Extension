@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "AI Toborzas",
+  "version": "3.1",
+  "description": "Toborzás kitöltése AI segítségével.",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "scripting",
+    "webNavigation"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.qdiak.hu/*",
+        "*://*.gitpod.io/*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": [
+    "*://*.qdiak.hu/*",
+    "*://*.gitpod.io/*"
+  ],
+  "icons": {
+    "16": "logo.png",
+    "48": "logo.png",
+    "128": "logo.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "logo.png",
+      "48": "logo.png",
+      "128": "logo.png"
+    },
+    "default_title": "AI Toborzas"
+  }
+}
