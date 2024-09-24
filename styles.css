@@ -49,14 +49,18 @@
 
 /* Green checkmark button style */
 .green-check-button {
-  background-color: #4caf50 !important;
-  border-color: #388e3c;
+  background-color: white !important;
+  border-color: #41AD49;
   color: white;
 }
 
-.green-checkmark {
-  font-size: 24px;
-  color: white;
+.green-check-button .content svg {
+  width: 40px;
+  height: 40px;
+}
+
+.green-check-button .content svg path {
+  fill: #41AD49;
 }
 
 /* Button content styles */

@@ -1,13 +1,11 @@
-// content.js
-
-(function() {
+(function () {
   // Utility function to extract the ID from the URL
   function getMyIdFromUrl(url) {
     if (!url) {
       console.error('URL is undefined');
       return null;
     }
-    const match = url.match(/\/(?:toborzasok|toborzas6?|toborzasok6?)\/([a-z0-9-]+)/);
+    const match = url.match(/\/(?:toborzas|toborzasok)\/([a-z0-9-]+)/);
     if (match) {
       return match[1];
     }
@@ -44,16 +42,19 @@
     if (!id) return;
 
     let headerElement;
-    if (url.includes('/toborzasok/') || url.includes('/toborzasok6/')) {
+    if (url.includes('/toborzasok/')) {
       // Wait for the header element to be available
-      headerElement = await waitForElement('#__next > div > div:nth-child(1) > div:nth-child(2) > div > div > div > div:nth-child(1)');
-    } else if (url.includes('/toborzas/') || url.includes('/toborzas6/')) {
+      headerElement = await waitForElement(
+        '#__next > div > div:nth-child(1) > div:nth-child(2) > div > div > div > div:nth-child(1)'
+      );
+    } else if (url.includes('/toborzas/')) {
       headerElement = await waitForElement('#main-content > header > div.actions');
     } else {
       return;
     }
 
     if (!headerElement) {
+      console.error('Header element not found');
       return;
     }
 
@@ -65,12 +66,12 @@
 
     buttonContainer.appendChild(button);
 
-    if (url.includes('/toborzasok/') || url.includes('/toborzasok6/')) {
+    if (url.includes('/toborzasok/')) {
       headerElement.style.display = 'flex';
       headerElement.style.alignItems = 'center';
       headerElement.style.justifyContent = 'center';
       headerElement.appendChild(buttonContainer);
-    } else if (url.includes('/toborzas/') || url.includes('/toborzas6/')) {
+    } else if (url.includes('/toborzas/')) {
       headerElement.insertBefore(buttonContainer, headerElement.firstChild);
     }
 
@@ -93,8 +94,8 @@
   async function checkMegjegyzesField() {
     const url = window.location.href;
 
-    if (url.includes('/toborzas/') || url.includes('/toborzas6/')) {
-      // On /toborzas/ or /toborzas6/ page
+    if (url.includes('/toborzas/')) {
+      // On /toborzas/ page, select the textarea with field="m_megjegyzes_egyeb"
       const megjegyzesSelector = 'textarea[field="m_megjegyzes_egyeb"]';
       const megjegyzesField = await waitForElement(megjegyzesSelector);
       if (!megjegyzesField) {
@@ -103,10 +104,12 @@
       }
 
       const value = megjegyzesField.value || '';
+      console.log(`Megjegyzés value: ${value}`);
       return value.includes('||AI-TOBORZOTT||');
-    } else if (url.includes('/toborzasok/') || url.includes('/toborzasok6/')) {
-      // On /toborzasok/ or /toborzasok6/ page
+    } else if (url.includes('/toborzasok/')) {
+      // On /toborzasok/ page
       const megjegyzesValue = await getMegjegyzesValueFromToborzasokPage();
+      console.log(`Megjegyzés value from /toborzasok/: ${megjegyzesValue}`);
       return megjegyzesValue.includes('||AI-TOBORZOTT||');
     }
 
@@ -153,7 +156,7 @@
     const myId = getMyIdFromUrl(window.location.href);
     if (myId) {
       showLoading(buttonContainer);
-      fetch(`https://prod-n8n.polandcentral.cloudapp.azure.com/webhook/starttttttttttt?toborzas_id=${myId}`)
+      fetch(`https://prod-n8n.polandcentral.cloudapp.azure.com/webhook/ai-toborzas-start-from-sales?toborzas_id=${myId}`)
         .then(response => {
           if (!response.ok) {
             throw new Error(`HTTP error occurred: ${response.status} ${response.statusText}`);
@@ -170,6 +173,7 @@
         })
         .finally(() => {
           hideLoading(buttonContainer, button);
+          updateButtonState(button); // Re-check the field and update the button state if necessary
         });
     }
   }
@@ -180,8 +184,15 @@
     if (shouldDisableButton) {
       button.disabled = true;
       button.title = 'A folyamat már elindult.';
-      // Change icon to green checkmark with distinctive style
-      button.innerHTML = '<span class="content"><span class="v-icon green-checkmark">✅</span></span>';
+      // Use the provided SVG as the icon
+      const checkmarkSVG = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 792" width="40" height="40">
+          <g>
+            <path fill="#41AD49" d="M562,396c0-141.4-114.6-256-256-256S50,254.6,50,396s114.6,256,256,256S562,537.4,562,396L562,396z M501.7,296.3l-241,241l0,0l-17.2,17.2L110.3,421.3l58.8-58.8l74.5,74.5l199.4-199.4L501.7,296.3L501.7,296.3z"/>
+          </g>
+        </svg>
+      `;
+      button.innerHTML = `<span class="content">${checkmarkSVG}</span>`;
       button.classList.add('green-check-button');
     } else {
       button.disabled = false;
