@@ -1,3 +1,5 @@
+// content.js
+
 (function () {
   // Utility function to extract the ID from the URL
   function getMyIdFromUrl(url) {
@@ -104,12 +106,10 @@
       }
 
       const value = megjegyzesField.value || '';
-      console.log(`Megjegyzés value: ${value}`);
       return value.includes('||AI-TOBORZOTT||');
     } else if (url.includes('/toborzasok/')) {
       // On /toborzasok/ page
       const megjegyzesValue = await getMegjegyzesValueFromToborzasokPage();
-      console.log(`Megjegyzés value from /toborzasok/: ${megjegyzesValue}`);
       return megjegyzesValue.includes('||AI-TOBORZOTT||');
     }
 
@@ -147,7 +147,8 @@
     const button = document.createElement('button');
     button.className = 'button align-center icon normal ai-toborzas-button';
     button.type = 'button';
-    button.innerHTML = '<span class="content"><span class="v-icon"><i data-icon="magic_wand">🪄</i></span></span>';
+    button.innerHTML =
+      '<span class="content"><span class="v-icon"><i data-icon="magic_wand">🪄</i></span></span>';
     return button;
   }
 
@@ -156,19 +157,21 @@
     const myId = getMyIdFromUrl(window.location.href);
     if (myId) {
       showLoading(buttonContainer);
-      fetch(`https://prod-n8n.polandcentral.cloudapp.azure.com/webhook/ai-toborzas-start-from-sales?toborzas_id=${myId}`)
-        .then(response => {
+      fetch(
+        `https://prod-n8n.polandcentral.cloudapp.azure.com/webhook/ai-toborzas-start-from-sales?toborzas_id=${myId}`
+      )
+        .then((response) => {
           if (!response.ok) {
             throw new Error(`HTTP error occurred: ${response.status} ${response.statusText}`);
           }
           return response.text();
         })
-        .then(text => {
+        .then((text) => {
           // Display the response message in a modal dialog
           displayModal(text);
         })
-        .catch(error => {
-          console.error("Fetch error:", error);
+        .catch((error) => {
+          console.error('Fetch error:', error);
           displayError(error.message);
         })
         .finally(() => {
@@ -198,7 +201,8 @@
       button.disabled = false;
       button.title = 'AI Toborzás indítása';
       // Restore original icon
-      button.innerHTML = '<span class="content"><span class="v-icon"><i data-icon="magic_wand">🪄</i></span></span>';
+      button.innerHTML =
+        '<span class="content"><span class="v-icon"><i data-icon="magic_wand">🪄</i></span></span>';
       button.classList.remove('green-check-button');
     }
   }
