@@ -7,7 +7,7 @@
       console.error('URL is undefined');
       return null;
     }
-    const match = url.match(/\/(?:toborzasok|toborzas)\/([a-z0-9-]+)/);
+    const match = url.match(/\/(?:toborzasok|toborzas6?|toborzasok6?)\/([a-z0-9-]+)/);
     if (match) {
       return match[1];
     }
@@ -44,10 +44,10 @@
     if (!id) return;
 
     let headerElement;
-    if (url.includes('/toborzasok/')) {
+    if (url.includes('/toborzasok/') || url.includes('/toborzasok6/')) {
       // Wait for the header element to be available
       headerElement = await waitForElement('#__next > div > div:nth-child(1) > div:nth-child(2) > div > div > div > div:nth-child(1)');
-    } else if (url.includes('/toborzas/')) {
+    } else if (url.includes('/toborzas/') || url.includes('/toborzas6/')) {
       headerElement = await waitForElement('#main-content > header > div.actions');
     } else {
       return;
@@ -57,25 +57,28 @@
       return;
     }
 
-    if (document.querySelector('#ai-toborzas-start-button')) {
-      return;
-    }
+    // Remove existing button if any
+    removeButton();
 
     const buttonContainer = createButtonContainer();
     const button = createButton();
 
     buttonContainer.appendChild(button);
 
-    if (url.includes('/toborzasok/')) {
+    if (url.includes('/toborzasok/') || url.includes('/toborzasok6/')) {
       headerElement.style.display = 'flex';
       headerElement.style.alignItems = 'center';
       headerElement.style.justifyContent = 'center';
       headerElement.appendChild(buttonContainer);
-    } else if (url.includes('/toborzas/')) {
+    } else if (url.includes('/toborzas/') || url.includes('/toborzas6/')) {
       headerElement.insertBefore(buttonContainer, headerElement.firstChild);
     }
 
+    // Add click event listener to the button
     button.addEventListener('click', () => handleButtonClick(buttonContainer, button));
+
+    // Initial check to set button state
+    updateButtonState(button);
   }
 
   // Function to remove the button if it exists
@@ -84,6 +87,48 @@
     if (existingButton) {
       existingButton.remove();
     }
+  }
+
+  // Function to check if "Megjegyzés/egyéb infó" field contains "||AI-TOBORZOTT||"
+  async function checkMegjegyzesField() {
+    const url = window.location.href;
+
+    if (url.includes('/toborzas/') || url.includes('/toborzas6/')) {
+      // On /toborzas/ or /toborzas6/ page
+      const megjegyzesSelector = 'textarea[field="m_megjegyzes_egyeb"]';
+      const megjegyzesField = await waitForElement(megjegyzesSelector);
+      if (!megjegyzesField) {
+        console.error('Megjegyzés/egyéb infó field not found on /toborzas/ page.');
+        return false;
+      }
+
+      const value = megjegyzesField.value || '';
+      return value.includes('||AI-TOBORZOTT||');
+    } else if (url.includes('/toborzasok/') || url.includes('/toborzasok6/')) {
+      // On /toborzasok/ or /toborzasok6/ page
+      const megjegyzesValue = await getMegjegyzesValueFromToborzasokPage();
+      return megjegyzesValue.includes('||AI-TOBORZOTT||');
+    }
+
+    return false;
+  }
+
+  // Function to get the value of "Megjegyzés" field on /toborzasok/ page
+  async function getMegjegyzesValueFromToborzasokPage() {
+    // Wait for the Megjegyzés sections to be available
+    await waitForElement('div.MuiGrid-item');
+    const megjegyzesSections = document.querySelectorAll('div.MuiGrid-item');
+    for (const section of megjegyzesSections) {
+      const h6 = section.querySelector('h6');
+      if (h6 && h6.textContent.trim() === 'Megjegyzés') {
+        const p = section.querySelector('p');
+        if (p) {
+          return p.textContent || '';
+        }
+      }
+    }
+    console.error('Megjegyzés section not found on /toborzasok/ page.');
+    return '';
   }
 
   // Function to create button container
@@ -108,7 +153,7 @@
     const myId = getMyIdFromUrl(window.location.href);
     if (myId) {
       showLoading(buttonContainer);
-      fetch(`https://prod-n8n.polandcentral.cloudapp.azure.com/webhook/ai-toborzas-start-from-sales?toborzas_id=${myId}`)
+      fetch(`https://prod-n8n.polandcentral.cloudapp.azure.com/webhook/starttttttttttt?toborzas_id=${myId}`)
         .then(response => {
           if (!response.ok) {
             throw new Error(`HTTP error occurred: ${response.status} ${response.statusText}`);
@@ -116,13 +161,8 @@
           return response.text();
         })
         .then(text => {
-          let data;
-          try {
-            data = JSON.parse(text);
-            processResponseData(data);
-          } catch (error) {
-            displayModal(text);
-          }
+          // Display the response message in a modal dialog
+          displayModal(text);
         })
         .catch(error => {
           console.error("Fetch error:", error);
@@ -132,6 +172,38 @@
           hideLoading(buttonContainer, button);
         });
     }
+  }
+
+  // Function to update the button state based on "Megjegyzés/egyéb infó" field
+  async function updateButtonState(button) {
+    const shouldDisableButton = await checkMegjegyzesField();
+    if (shouldDisableButton) {
+      button.disabled = true;
+      button.title = 'A folyamat már elindult.';
+      // Change icon to green checkmark with distinctive style
+      button.innerHTML = '<span class="content"><span class="v-icon green-checkmark">✅</span></span>';
+      button.classList.add('green-check-button');
+    } else {
+      button.disabled = false;
+      button.title = 'AI Toborzás indítása';
+      // Restore original icon
+      button.innerHTML = '<span class="content"><span class="v-icon"><i data-icon="magic_wand">🪄</i></span></span>';
+      button.classList.remove('green-check-button');
+    }
+  }
+
+  // Function to show loading spinner
+  function showLoading(container) {
+    const loader = document.createElement('div');
+    loader.className = 'loader';
+    container.innerHTML = '';
+    container.appendChild(loader);
+  }
+
+  // Function to hide loading spinner
+  function hideLoading(container, button) {
+    container.innerHTML = '';
+    container.appendChild(button);
   }
 
   // Function to display plain text in a modal dialog
@@ -160,224 +232,36 @@
     document.body.appendChild(overlay);
   }
 
-  // Function to process the response data
-  function processResponseData(data) {
-    try {
-      const responseData = data[""];
-      if (!responseData || !Array.isArray(responseData) || responseData.length < 2) {
-        throw new Error('Invalid data structure');
-      }
-
-      const postContent = findNestedProperty(responseData[0], 'poszt_szoveg') || findNestedProperty(responseData[0], 'content.text');
-      const driveFile = findNestedProperty(responseData[1], 'id');
-
-      const processedData = {
-        post: postContent,
-        id: driveFile
-      };
-
-      notifyUser('A folyamat sikeres volt!');
-      displayResponse(processedData);
-    } catch (error) {
-      console.error("Error processing data:", error);
-      displayError('Error processing response data: ' + error.message);
-    }
-  }
-
-  // Function to show loading spinner
-  function showLoading(container) {
-    const loader = document.createElement('div');
-    loader.className = 'loader';
-    container.innerHTML = '';
-    container.appendChild(loader);
-  }
-
-  // Function to hide loading spinner
-  function hideLoading(container, button) {
-    container.innerHTML = '';
-    container.appendChild(button);
-  }
-
-  // Function to notify user
-  function notifyUser(message) {
-    const notification = document.createElement('div');
-    notification.className = 'notification';
-    notification.textContent = message;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
-  }
-
-  // Function to display response in an overlay
-  function displayResponse(data) {
-    const overlay = createOverlay();
-    const responseContainer = createResponseContainer();
-    const content = createResponseContent();
-    const message = createMessageElement('Hirdetés:');
-    const facebookPostContainer = createFacebookPostContainer(data);
-    const buttonContainer = createResponseButtonContainer(data);
-
-    content.appendChild(message);
-    content.appendChild(facebookPostContainer);
-    responseContainer.appendChild(content);
-    responseContainer.appendChild(buttonContainer);
-    overlay.appendChild(responseContainer);
-    document.body.appendChild(overlay);
-  }
-
-  // Function to create overlay
-  function createOverlay() {
+  // Function to display error in an overlay
+  function displayError(errorMessage) {
     const overlay = document.createElement('div');
-    overlay.className = 'overlay';
-    return overlay;
-  }
+    overlay.className = 'modal-overlay';
 
-  // Function to create response container
-  function createResponseContainer() {
-    const responseContainer = document.createElement('div');
-    responseContainer.id = 'response-container';
-    responseContainer.className = 'response-container';
-    return responseContainer;
-  }
+    const errorContainer = document.createElement('div');
+    errorContainer.className = 'modal-container';
 
-  // Function to create response content
-  function createResponseContent() {
-    const content = document.createElement('div');
-    content.className = 'response-content';
-    return content;
-  }
+    const errorText = document.createElement('div');
+    errorText.className = 'modal-message';
+    errorText.textContent = errorMessage || 'An unknown error occurred.';
 
-  // Function to create message element
-  function createMessageElement(text) {
-    const message = document.createElement('div');
-    message.className = 'response-message';
-    message.textContent = text;
-    return message;
-  }
-
-  // Function to create Facebook post container
-  function createFacebookPostContainer(data) {
-    const facebookPostContainer = document.createElement('div');
-    facebookPostContainer.className = 'facebook-post-container';
-    try {
-      const postContent = data.post;
-      if (postContent) {
-        facebookPostContainer.innerHTML = postContent.replace(/\n/g, '<br>');
-      } else {
-        throw new Error('Invalid data structure');
-      }
-    } catch (error) {
-      console.error('Error processing response data:', error);
-      facebookPostContainer.textContent = 'Error occurred while processing the data.';
-    }
-    return facebookPostContainer;
-  }
-
-  // Function to create response button container
-  function createResponseButtonContainer(data) {
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'response-button-container';
-
-    const leftButtonContainer = createLeftButtonContainer(data);
-    const closeButton = createCloseButton();
-
-    buttonContainer.appendChild(leftButtonContainer);
-    buttonContainer.appendChild(closeButton);
-    return buttonContainer;
-  }
-
-  // Function to create left button container
-  function createLeftButtonContainer(data) {
-    const leftButtonContainer = document.createElement('div');
-    leftButtonContainer.className = 'left-button-container';
-
-    try {
-      const driveFile = data.id;
-      if (driveFile) {
-        const link = `https://drive.google.com/uc?export=download&id=${driveFile}`;
-
-        const downloadButton = createDownloadButton(link);
-        leftButtonContainer.appendChild(downloadButton);
-      } else {
-        throw new Error('Invalid file data structure');
-      }
-    } catch (error) {
-      console.error('Error processing file data:', error);
-    }
-
-    const copyTextButton = createCopyTextButton(data);
-    leftButtonContainer.appendChild(copyTextButton);
-    return leftButtonContainer;
-  }
-
-  // Function to create download button
-  function createDownloadButton(link) {
-    const downloadButton = document.createElement('button');
-    downloadButton.className = 'button-download';
-    downloadButton.textContent = 'Kép letöltés';
-    downloadButton.addEventListener('click', () => {
-      window.open(link, '_blank');
-    });
-    return downloadButton;
-  }
-
-  // Function to create copy text button
-  function createCopyTextButton(data) {
-    const copyTextButton = document.createElement('button');
-    copyTextButton.className = 'button-copy';
-    copyTextButton.textContent = 'Szöveg másolása';
-    copyTextButton.addEventListener('click', () => {
-      const textToCopy = data.post || '';
-      navigator.clipboard.writeText(textToCopy).then(() => {
-        notifyUser('Szöveg másolva!');
-      }).catch(err => {
-        console.error('Error copying text:', err);
-        notifyUser('Hiba történt a szöveg másolása közben.');
-      });
-    });
-    return copyTextButton;
-  }
-
-  // Function to create close button
-  function createCloseButton() {
     const closeButton = document.createElement('button');
-    closeButton.className = 'button-close';
+    closeButton.className = 'button-primary';
     closeButton.textContent = 'Bezárás';
     closeButton.addEventListener('click', () => {
-      const overlay = document.querySelector('.overlay');
-      if (overlay) {
-        overlay.remove();
-      }
+      overlay.remove();
     });
-    return closeButton;
-  }
 
-  // Utility function to find a nested property in an object
-  function findNestedProperty(obj, key) {
-    if (typeof obj !== 'object' || obj === null) {
-      return null;
-    }
-    if (obj.hasOwnProperty(key)) {
-      return obj[key];
-    }
-    for (const k in obj) {
-      if (obj.hasOwnProperty(k) && typeof obj[k] === 'object') {
-        const result = findNestedProperty(obj[k], key);
-        if (result !== null) {
-          return result;
-        }
-      }
-    }
-    return null;
+    errorContainer.appendChild(errorText);
+    errorContainer.appendChild(closeButton);
+    overlay.appendChild(errorContainer);
+
+    document.body.appendChild(overlay);
   }
 
   // Function to initialize the script
   function init() {
     let lastUrl = '';
-    setInterval(() => {
+    setInterval(async () => {
       const currentUrl = window.location.href;
       if (currentUrl !== lastUrl) {
         lastUrl = currentUrl;
@@ -389,10 +273,10 @@
           removeButton();
         }
       } else {
-        // Even if the URL hasn't changed, check if the button is missing and should be added
-        const id = getMyIdFromUrl(currentUrl);
-        if (id && !document.querySelector('#ai-toborzas-start-button')) {
-          addButtonToHeader();
+        // Even if the URL hasn't changed, check if the button needs to update its state
+        const button = document.querySelector('#ai-toborzas-start-button .ai-toborzas-button');
+        if (button) {
+          updateButtonState(button);
         }
       }
     }, 1000);
