@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Toborzas",
-  "version": "3.1",
+  "version": "4.0",
   "description": "Toborzás kitöltése AI segítségével.",
   "permissions": [
     "activeTab",
